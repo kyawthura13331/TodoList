@@ -1,168 +1,196 @@
-import {useState} from 'react'
-import Card from './Card'
+import { useState } from "react";
 
 const App = () => {
   const [todos, setTodos] = useState([]);
-  const [text, setText] = useState('');
-const [complted, setCompleted] = useState([]);
-const [progress,setProgress]=useState([]);
-const [isedit,setisedit] = useState(false);
-const[id,setid]=useState();
+  const [progress, setProgress] = useState([]);
+  const [completed, setCompleted] = useState([]);
+  const [text, setText] = useState("");
+  const [isEdit, setIsEdit] = useState(false);
+  const [editId, setEditId] = useState(null);
+
+  // Add or Update Todo
   const handleAdd = (e) => {
     e.preventDefault();
-    try {
-      if(isedit){
-        
-      const updatetodo = todos.map(todo => todo.id===id?{
-        id: new Date().toLocaleTimeString(),
-        text:text
-        
-      }:
-    todo)
-    setTodos(updatetodo)
-    clear()
-      }else{
-        setTodos([...todos,{
-          id: new Date().toLocaleTimeString(),
-          text: text,
-          status: 'todo'
+    if (!text.trim()) return;
 
-        }])
-        clear()
-      }
-    } catch (error) {
-      
+    const now = new Date().toLocaleTimeString(); // hh:mm:ss format
+
+    if (isEdit && editId) {
+      setTodos((prev) =>
+        prev.map((todo) =>
+          todo.id === editId ? { ...todo, text } : todo
+        )
+      );
+      clear();
+    } else {
+      setTodos((prev) => [
+        ...prev,
+        { id: Date.now().toString(), text, status: "todo", time: now },
+      ]);
+      clear();
     }
-  }
-const clear = ()=>{
-  setText("")
-  setid()
-  setisedit(false)
-}
-const deletetodo = (id) => {
-  setTodos(todos.filter(todo => todo.id !== id));
-}
-const deleteprogress = (id) => {
-  setProgress(progress.filter(progress => progress.id !== id));
-}
-const doneprogress = (id) => {
-  const todoToMove = progress.find(todo => todo.id === id);
-  if (todoToMove) {
-    setCompleted([...complted, { 
-      ...todoToMove,
-      id: new Date().toLocaleTimeString(),
-       status: 'completed' }]);
-    setProgress(progress.filter(todo => todo.id !== id));
-  }
-};
+  };
 
-const donetodo = (id) => {
-  const todoToMove = todos.find(todo => todo.id === id);
-  if (todoToMove) {
-   
-    const completedTodo = {
-      ...todoToMove,
-      id: new Date().toLocaleTimeString(),
-      status: 'completed'
-    };
-    setCompleted([...complted, completedTodo]);
-    setTodos(todos.filter(todo => todo.id !== id));
-  }
-};
-const progresstodo = (id) => {
-  const todoToMove = todos.find(todo => todo.id === id);
-  if (todoToMove) {
-    const updatedTodo = {
-       ...todoToMove,
-      id: new Date().toLocaleTimeString(), 
-       status: 'inprogress' };
-    setProgress([...progress, updatedTodo]);
-    setTodos(todos.filter(todo => todo.id !== id));
-  }
-}
-const deleteCompleted= (id) => {
-  setCompleted(complted.filter(complted => complted.id !== id));
-} 
+  const clear = () => {
+    setText("");
+    setEditId(null);
+    setIsEdit(false);
+  };
+
+  // Delete functions
+  const deleteTodo = (id) => setTodos((prev) => prev.filter((t) => t.id !== id));
+  const deleteProgress = (id) => setProgress((prev) => prev.filter((t) => t.id !== id));
+  const deleteCompleted = (id) => setCompleted((prev) => prev.filter((t) => t.id !== id));
+
+  // Move Todo → Progress
+  const moveToProgress = (id) => {
+    const item = todos.find((t) => t.id === id);
+    if (item) {
+      const now = new Date().toLocaleTimeString();
+      setProgress([...progress, { ...item, status: "inprogress", time: now }]);
+      deleteTodo(id);
+    }
+  };
+
+  // Move Todo → Completed
+  const moveToCompleted = (id, from) => {
+    const source = from === "todo" ? todos : progress;
+    const item = source.find((t) => t.id === id);
+    if (item) {
+      const now = new Date().toLocaleTimeString();
+      setCompleted([...completed, { ...item, status: "completed", time: now }]);
+      from === "todo" ? deleteTodo(id) : deleteProgress(id);
+    }
+  };
+
   return (
-    <>
-      <form onSubmit={handleAdd} className='flex flex-col items-center justify-center '>
-        <div className='flex justify-center '>
-          
-            <input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-  
-              type="text"
-              id='textinput'
-              className=' w-[20vw] h-10 bg-blue-300 text-center text-2xl'
-              placeholder='Enter To do Task'
-            />
-            <button type="submit" className={`${isedit? 'bg-red-500': 'bg-green-400'} w-20 h-10 ml-10 active:bg-fuchsia-900`}>
-              {
-                isedit ? 'Update' : 'Add'
-                
-              }
-              </button>
-          </div>
-           </form>
-        
-        <div className='grid grid-cols-3 gap-10 pt-10 m-4 text-center text-2xl p-10'>
-          <div className='bg-green-400 w-auto h-[70vh] overflow-auto' >
-            <p className='bg-white text-black'>To Do Task </p>
-            {todos.map((todo) => (
-            <Card
+    <div className="min-h-screen bg-gray-900 p-6">
+      <h1 className="text-white text-3xl font-bold text-center mb-6">
+        🖤 Smart Dark Todo
+      </h1>
+
+      {/* Input Form */}
+      <form
+        onSubmit={handleAdd}
+        className="flex justify-center gap-4 mb-8"
+      >
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          type="text"
+          placeholder="Enter your task..."
+          className="w-[50%] p-3 rounded-xl border border-gray-700 bg-gray-800 text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-gray-500"
+        />
+        <button
+          type="submit"
+          className={`px-6 py-3 rounded-xl text-white font-semibold shadow-lg transition ${
+            isEdit
+              ? "bg-yellow-600 hover:bg-yellow-700"
+              : "bg-gray-700 hover:bg-gray-800"
+          }`}
+        >
+          {isEdit ? "Update" : "Add"}
+        </button>
+      </form>
+
+      {/* Columns */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* To Do */}
+        <div className="bg-gray-800 p-5 rounded-xl shadow-lg">
+          <h2 className="text-white text-xl font-semibold mb-4">📝 To Do</h2>
+          {todos.map((todo) => (
+            <div
               key={todo.id}
-              text={todo.text}
-              id={todo.id}
-             status='todo'
-             deletetodo={deletetodo}
-            donetodo={donetodo} 
-            setisedit={setisedit}
-            settext={setText}
-            setid={setid}
-            progresstodo={progresstodo}
-            
-  />
-))}
-          </div>
-          <div className='bg-yellow-400 w-auto h-[70vh]'>
-  <p className='bg-white text-black'>Progress </p>
-  {
-    progress.map((progress) => (
-      <Card
-        key={progress.id}
-        text={progress.text}
-        id={progress.id}
-        status='inprogress'
-       deleteprogress={deleteprogress}
-       doneprogress={doneprogress}
-      
-      
-      />
-    ))
-
-  }
-</div>
-
-
-          <div className='bg-red-400 w-auto h-[70vh]'>
-  <p className='bg-white text-black'>Completed </p>
-  {
-    complted.map((complted) => (
-      <Card
-        key={complted.id}
-        text={complted.text}
-        id={complted.id}
-        status='completed'
-       deletetodo={deleteCompleted} 
-      />
-    ))
-  }
-</div>
+              className="flex flex-col bg-gray-700 p-3 rounded-lg mb-3 shadow-md hover:bg-gray-600 transition"
+            >
+              <span className="text-white font-medium">{todo.text}</span>
+              <span className="text-gray-300 text-sm">{todo.time}</span>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => {
+                    setIsEdit(true);
+                    setEditId(todo.id);
+                    setText(todo.text);
+                  }}
+                  className="px-2 py-1 bg-blue-700 hover:bg-blue-800 rounded text-white"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => moveToProgress(todo.id)}
+                  className="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-white"
+                >
+                  ➡️
+                </button>
+                <button
+                  onClick={() => moveToCompleted(todo.id, "todo")}
+                  className="px-2 py-1 bg-green-700 hover:bg-green-800 rounded text-white"
+                >
+                  ✅
+                </button>
+                <button
+                  onClick={() => deleteTodo(todo.id)}
+                  className="px-2 py-1 bg-red-700 hover:bg-red-800 rounded text-white"
+                >
+                  ❌
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-     
-    </>
-  )
-}
 
-export default App
+        {/* In Progress */}
+        <div className="bg-gray-800 p-5 rounded-xl shadow-lg">
+          <h2 className="text-white text-xl font-semibold mb-4">⚡ In Progress</h2>
+          {progress.map((item) => (
+            <div
+              key={item.id}
+              className="flex flex-col bg-gray-700 p-3 rounded-lg mb-3 shadow-md hover:bg-gray-600 transition"
+            >
+              <span className="text-white font-medium">{item.text}</span>
+              <span className="text-gray-300 text-sm">{item.time}</span>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => moveToCompleted(item.id, "progress")}
+                  className="px-2 py-1 bg-green-700 hover:bg-green-800 rounded text-white"
+                >
+                  ✅
+                </button>
+                <button
+                  onClick={() => deleteProgress(item.id)}
+                  className="px-2 py-1 bg-red-700 hover:bg-red-800 rounded text-white"
+                >
+                  ❌
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Completed */}
+        <div className="bg-gray-800 p-5 rounded-xl shadow-lg">
+          <h2 className="text-white text-xl font-semibold mb-4">🎉 Completed</h2>
+          {completed.map((item) => (
+            <div
+              key={item.id}
+              className="flex flex-col bg-gray-700 p-3 rounded-lg mb-3 shadow-md hover:bg-gray-600 transition"
+            >
+              <span className="text-gray-300 font-medium line-through">{item.text}</span>
+              <span className="text-gray-400 text-sm">{item.time}</span>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => deleteCompleted(item.id)}
+                  className="px-2 py-1 bg-red-700 hover:bg-red-800 rounded text-white"
+                >
+                  ❌
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
